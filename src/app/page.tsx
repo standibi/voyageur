@@ -110,27 +110,44 @@ export default function Home() {
 
   if (isLoading && Object.keys(tripData).length === 0) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Loading Trip Data...</div>;
   
-  if (!currentCityId || !tripData[currentCityId]) return (
-    <div className="flex h-screen flex-col items-center justify-center font-bold text-slate-500 gap-4">
-      <p>No cities found.</p>
-      <button onClick={() => setActiveModal("addDestination")} className="bg-indigo-600 text-white px-6 py-2 rounded-xl">Add Destination</button>
-      
-      <Modal title="Add New Destination" isOpen={activeModal === "addDestination"} onClose={closeModal}>
-        <form onSubmit={handleAddDestination} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label><input name="name" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label><input name="dates" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label><input name="nights" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label><input name="img_url" type="url" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Estimated Budget (€)</label><input name="allocated_budget" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-            <button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Destination</button>
-          </div>
-        </form>
-      </Modal>
-    </div>
-  );
+  if (!currentCityId || !tripData[currentCityId]) {
+    return (
+      <>
+        <Modal title="Add New Destination" isOpen={activeModal === "addDestination"} onClose={closeModal}>
+          <form onSubmit={handleAddDestination} className="space-y-4">
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label><input name="name" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label><input name="dates" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label><input name="nights" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            </div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label><input name="img_url" type="url" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Estimated Budget (€)</label><input name="allocated_budget" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Destination</button></div>
+          </form>
+        </Modal>
+
+        <Sidebar 
+          tripData={tripData} 
+          currentCityId={null} 
+          setCurrentCityId={setCurrentCityId} 
+          onAddDestination={() => setActiveModal("addDestination")} 
+        />
+        
+        <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 relative p-10">
+           <div className="max-w-md w-full text-center">
+             <div className="w-24 h-24 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm border border-indigo-100">
+               <i className="fa-solid fa-map-location-dot"></i>
+             </div>
+             <h2 className="text-3xl font-extrabold text-slate-800 mb-3">Plan Your Next Adventure</h2>
+             <p className="text-slate-500 text-lg mb-8">Your itinerary is currently empty. Start by adding a destination to your roadtrip!</p>
+             <button onClick={() => setActiveModal("addDestination")} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-indigo-600/30 transition-transform transform hover:scale-105 flex items-center gap-3 mx-auto text-lg">
+                <i className="fa-solid fa-plane-departure"></i> Let's Go!
+             </button>
+           </div>
+        </div>
+      </>
+    );
+  }
 
   const city = tripData[currentCityId];
 
