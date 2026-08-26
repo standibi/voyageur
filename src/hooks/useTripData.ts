@@ -6,6 +6,7 @@ export function useTripData() {
   const supabase = createClient();
   const [tripData, setTripData] = useState<Record<string, CityData>>({});
   const [currentCityId, setCurrentCityId] = useState<string | null>(null);
+  const [checklist, setChecklist] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = async (preserveCityId = false) => {
@@ -15,14 +16,19 @@ export function useTripData() {
     if (!cities || cities.length === 0) {
       setTripData({});
       setCurrentCityId(null);
+      setChecklist([]);
       setIsLoading(false);
       return;
     }
 
     const cityIds = cities.map(c => c.id);
+    const tripId = cities[0].trip_id;
     const { data: hotels } = await supabase.from('hotels').select('*').in('city_id', cityIds);
     const { data: activities } = await supabase.from('activities').select('*').in('city_id', cityIds).order('sort_order', { ascending: true });
     const { data: expenses } = await supabase.from('expenses').select('*').in('city_id', cityIds);
+    const { data: checklistItems } = await supabase.from('checklist_items').select('*').eq('trip_id', tripId).order('created_at', { ascending: true });
+
+    if (checklistItems) setChecklist(checklistItems);
 
     const formattedData: Record<string, CityData> = {};
 
@@ -85,6 +91,7 @@ export function useTripData() {
     tripData,
     currentCityId,
     setCurrentCityId,
+    checklist,
     isLoading,
     fetchData
   };

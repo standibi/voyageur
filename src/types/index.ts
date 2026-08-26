@@ -1,4 +1,4 @@
-export type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger";
+export type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger" | "checklist";
 
 export interface Hotel {
   id?: string;
@@ -56,4 +56,11 @@ export interface CityData {
   timeline: TimelineDay[];
   rawActivities: Activity[];
   rawExpenses: any[];
+}
+
+export interface ChecklistItem {
+  id: string;
+  trip_id: string;
+  title: string;
+  is_completed: boolean;
 }

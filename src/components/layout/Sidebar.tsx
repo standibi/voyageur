@@ -5,9 +5,10 @@ interface SidebarProps {
   currentCityId: string | null;
   setCurrentCityId: (id: string) => void;
   onAddDestination: () => void;
+  onOpenChecklist: () => void;
 }
 
-export default function Sidebar({ tripData, currentCityId, setCurrentCityId, onAddDestination }: SidebarProps) {
+export default function Sidebar({ tripData, currentCityId, setCurrentCityId, onAddDestination, onOpenChecklist }: SidebarProps) {
   const cities = Object.values(tripData);
   const totalBudget = cities.reduce((acc, c) => acc + c.totalBudget, 0);
   const totalNights = cities.reduce((acc, c) => acc + c.nights, 0);
@@ -57,6 +58,9 @@ export default function Sidebar({ tripData, currentCityId, setCurrentCityId, onA
       <div className="p-4 border-t border-slate-100">
         <button onClick={onAddDestination} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-slate-900/20 flex justify-center items-center gap-2">
           <i className="fa-solid fa-plus"></i> Add Destination
+        </button>
+        <button onClick={onOpenChecklist} className="w-full mt-3 bg-white hover:bg-slate-50 text-indigo-600 border border-indigo-200 font-semibold py-3 rounded-xl transition-colors shadow-sm flex justify-center items-center gap-2">
+          <i className="fa-solid fa-list-check"></i> Trip Checklist
         </button>
       </div>
     </div>

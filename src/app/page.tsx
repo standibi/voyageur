@@ -5,9 +5,10 @@ import { ModalType, Activity } from "@/types";
 import Sidebar from "@/components/layout/Sidebar";
 import CityView from "@/components/city/CityView";
 import Modal from "@/components/modals/Modal";
+import ChecklistModal from "@/components/modals/ChecklistModal";
 
 export default function Home() {
-  const { supabase, tripData, currentCityId, setCurrentCityId, isLoading, fetchData } = useTripData();
+  const { supabase, tripData, currentCityId, setCurrentCityId, checklist, isLoading, fetchData } = useTripData();
   const [activeModal, setActiveModal] = useState<ModalType>("none");
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
@@ -107,6 +108,22 @@ export default function Home() {
     fetchData(true);
   };
 
+  const handleAddChecklistItem = async (title: string) => {
+    const tripId = Object.values(tripData)[0]?.trip_id;
+    if (!tripId) return;
+    await supabase.from('checklist_items').insert({ trip_id: tripId, title });
+    fetchData(true);
+  };
+
+  const handleToggleChecklistItem = async (id: string, is_completed: boolean) => {
+    await supabase.from('checklist_items').update({ is_completed }).eq('id', id);
+    fetchData(true);
+  };
+
+  const handleDeleteChecklistItem = async (id: string) => {
+    await supabase.from('checklist_items').delete().eq('id', id);
+    fetchData(true);
+  };
 
   if (isLoading && Object.keys(tripData).length === 0) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Loading Trip Data...</div>;
   
@@ -126,11 +143,21 @@ export default function Home() {
           </form>
         </Modal>
 
+        <Modal title="Trip Checklist" isOpen={activeModal === "checklist"} onClose={closeModal}>
+          <ChecklistModal 
+            checklist={checklist}
+            onAdd={handleAddChecklistItem}
+            onToggle={handleToggleChecklistItem}
+            onDelete={handleDeleteChecklistItem}
+          />
+        </Modal>
+
         <Sidebar 
           tripData={tripData} 
           currentCityId={null} 
           setCurrentCityId={setCurrentCityId} 
           onAddDestination={() => setActiveModal("addDestination")} 
+          onOpenChecklist={() => setActiveModal("checklist")}
         />
         
         <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 relative p-10">
@@ -265,11 +292,22 @@ export default function Home() {
         </div>
       </Modal>
 
+      {/* CHECKLIST MODAL */}
+      <Modal title="Trip Checklist" isOpen={activeModal === "checklist"} onClose={closeModal}>
+        <ChecklistModal 
+          checklist={checklist}
+          onAdd={handleAddChecklistItem}
+          onToggle={handleToggleChecklistItem}
+          onDelete={handleDeleteChecklistItem}
+        />
+      </Modal>
+
       <Sidebar 
         tripData={tripData} 
         currentCityId={currentCityId} 
         setCurrentCityId={setCurrentCityId} 
         onAddDestination={() => setActiveModal("addDestination")} 
+        onOpenChecklist={() => setActiveModal("checklist")}
       />
       <CityView 
         city={city} 
