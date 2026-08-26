@@ -113,7 +113,7 @@ const DATA = {
   },
 };
 
-type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "addDestination";
+type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger";
 
 export default function Home() {
   const [currentCityId, setCurrentCityId] = useState<keyof typeof DATA>("paris");
@@ -124,7 +124,7 @@ export default function Home() {
 
   const closeModal = () => setActiveModal("none");
 
-  const Modal = ({ title, children, isOpen }: { title: string, children: React.ReactNode, isOpen: boolean }) => {
+  const Modal = ({ title, children, isOpen, showDelete }: { title: string, children: React.ReactNode, isOpen: boolean, showDelete?: string }) => {
     if (!isOpen) return null;
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
@@ -138,9 +138,18 @@ export default function Home() {
           <div className="p-6 overflow-y-auto max-h-[70vh]">
             {children}
           </div>
-          <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
-            <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-            <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20">Save Details</button>
+          <div className="p-6 border-t border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+              {showDelete && (
+                <button className="px-4 py-2 rounded-xl font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors flex items-center gap-2">
+                  <i className="fa-solid fa-trash"></i> {showDelete}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+              <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20">Save Details</button>
+            </div>
           </div>
         </div>
       </div>
@@ -180,7 +189,7 @@ export default function Home() {
       </Modal>
 
       {/* Edit City Modal */}
-      <Modal title={`Edit ${city.name}`} isOpen={activeModal === "editCity"}>
+      <Modal title={`Edit ${city.name}`} isOpen={activeModal === "editCity"} showDelete="Delete City">
         <form className="space-y-4" onSubmit={e => e.preventDefault()}>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label>
@@ -204,7 +213,7 @@ export default function Home() {
       </Modal>
 
       {/* Change Stay Modal */}
-      <Modal title={`Update Stay in ${city.name}`} isOpen={activeModal === "changeStay"}>
+      <Modal title={`Update Stay in ${city.name}`} isOpen={activeModal === "changeStay"} showDelete="Remove Stay">
         <form className="space-y-4" onSubmit={e => e.preventDefault()}>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Hotel Name</label>
@@ -241,8 +250,8 @@ export default function Home() {
         </form>
       </Modal>
 
-      {/* Add Activity Modal */}
-      <Modal title="Add New Activity" isOpen={activeModal === "addActivity"}>
+      {/* Add / Edit Activity Modal */}
+      <Modal title={activeModal === "editActivity" ? "Edit Activity" : "Add New Activity"} isOpen={activeModal === "addActivity" || activeModal === "editActivity"} showDelete={activeModal === "editActivity" ? "Delete Activity" : undefined}>
         <form className="space-y-4" onSubmit={e => e.preventDefault()}>
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Activity Name</label>
@@ -288,6 +297,51 @@ export default function Home() {
           </div>
         </form>
       </Modal>
+
+      {/* Ledger Modal */}
+      <Modal title={`${city.name} - Detailed Ledger`} isOpen={activeModal === "ledger"}>
+        <div className="space-y-4">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500 text-sm">
+                <th className="py-2 font-medium">Item</th>
+                <th className="py-2 font-medium">Category</th>
+                <th className="py-2 font-medium text-right">Cost</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              <tr className="border-b border-slate-100 group hover:bg-slate-50 transition-colors">
+                <td className="py-3 font-semibold text-slate-800">{city.hotel.name}</td>
+                <td className="py-3 text-slate-500"><span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-bold">Stay</span></td>
+                <td className="py-3 text-right font-bold">€{city.breakdown.stay}</td>
+              </tr>
+              {city.timeline.map((day) =>
+                day.activities.map((act, i) => {
+                  const isFood = act.icon === "fa-utensils";
+                  const catClass = isFood ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600";
+                  const catName = isFood ? "Food" : "Activity";
+                  return (
+                    <tr key={`${day.date}-${i}`} className="border-b border-slate-100 group hover:bg-slate-50 transition-colors">
+                      <td className="py-3 font-semibold text-slate-800">{act.name}</td>
+                      <td className="py-3 text-slate-500">
+                        <span className={`${catClass} px-2 py-1 rounded text-xs font-bold`}>{catName}</span>
+                      </td>
+                      <td className="py-3 text-right font-bold">{act.price}</td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="text-lg">
+                <td colSpan={2} className="py-4 font-bold text-slate-800">Total City Budget</td>
+                <td className="py-4 text-right font-extrabold text-indigo-600">€{city.totalBudget}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </Modal>
+
 
       {/* Sidebar: Itinerary / Cities List */}
       <div className="w-80 bg-white border-r border-slate-200 h-full flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
@@ -425,7 +479,7 @@ export default function Home() {
                   </button>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex gap-6 hover:shadow-md transition-all group">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex gap-6 hover:shadow-md transition-all group relative overflow-hidden">
                   <div className="relative w-32 h-32 shrink-0">
                     <img
                       src={city.hotel.img}
@@ -509,16 +563,31 @@ export default function Home() {
                         {day.activities.map((act, i) => (
                           <div
                             key={i}
-                            className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 flex gap-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer"
+                            className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 flex gap-5 hover:shadow-lg transition-all duration-300 group cursor-default relative overflow-hidden pl-8"
                           >
+                            {/* Drag handle */}
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-slate-500 cursor-grab transition-opacity px-1 py-4">
+                              <i className="fa-solid fa-grip-vertical"></i>
+                            </div>
+
+                            {/* Actions on hover */}
+                            <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                              <button onClick={() => setActiveModal("editActivity")} className="w-8 h-8 rounded-full bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 flex items-center justify-center transition-colors shadow-sm border border-slate-100">
+                                <i className="fa-solid fa-pen text-xs"></i>
+                              </button>
+                              <button className="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors shadow-sm border border-slate-100">
+                                <i className="fa-solid fa-trash text-xs"></i>
+                              </button>
+                            </div>
+
                             <div
-                              className={`w-14 h-14 rounded-xl ${act.bg} flex items-center justify-center shrink-0 ${act.color} text-xl group-hover:scale-110 transition-transform`}
+                              className={`w-14 h-14 rounded-xl ${act.bg} flex items-center justify-center shrink-0 ${act.color} text-xl transition-transform`}
                             >
                               <i className={`fa-solid ${act.icon}`}></i>
                             </div>
-                            <div className="flex-1 pt-1">
+                            <div className="flex-1 pt-1 pr-16">
                               <div className="flex justify-between items-start mb-1">
-                                <h5 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">
+                                <h5 className="font-bold text-slate-800 text-lg transition-colors">
                                   {act.name}
                                 </h5>
                                 <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg text-sm">
@@ -636,8 +705,8 @@ export default function Home() {
                   </div>
 
                   <div className="mt-6 pt-5 border-t border-slate-100">
-                    <button className="w-full text-center text-sm font-bold text-indigo-600 hover:text-indigo-800">
-                      View Detailed Ledger
+                    <button onClick={() => setActiveModal("ledger")} className="w-full text-center text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-2">
+                      <i className="fa-solid fa-file-invoice-dollar"></i> View Detailed Ledger
                     </button>
                   </div>
                 </div>
