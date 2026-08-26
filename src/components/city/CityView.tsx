@@ -1,37 +1,49 @@
+import PullToRefresh from "react-simple-pull-to-refresh";
 import { CityData, Activity } from "@/types";
 
 interface CityViewProps {
   city: CityData;
+  onBack?: () => void;
   onEditCity: () => void;
   onChangeStay: () => void;
   onAddActivity: () => void;
   onEditActivity: (activity: Activity) => void;
   onViewLedger: () => void;
+  onRefresh: () => Promise<void>;
 }
 
-export default function CityView({ city, onEditCity, onChangeStay, onAddActivity, onEditActivity, onViewLedger }: CityViewProps) {
+export default function CityView({ city, onBack, onEditCity, onChangeStay, onAddActivity, onEditActivity, onViewLedger, onRefresh }: CityViewProps) {
   const actCount = city.rawActivities.length;
 
   return (
     <div className="flex-1 h-full flex flex-col bg-slate-50/50 overflow-hidden relative">
-      <div className="h-72 relative shrink-0 group">
+      <div className="h-64 md:h-72 relative shrink-0 group">
         <img src={city.img} className="w-full h-full object-cover" alt={city.name} />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
 
-        <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEditCity} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
-            <i className="fa-solid fa-pen"></i> Edit City
+        {onBack && (
+          <button 
+            onClick={onBack} 
+            className="md:hidden absolute top-4 left-4 z-10 bg-black/30 hover:bg-black/50 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          >
+            <i className="fa-solid fa-chevron-left"></i>
+          </button>
+        )}
+
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-3 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={onEditCity} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-3 md:px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
+            <i className="fa-solid fa-pen"></i> <span className="hidden md:inline">Edit City</span>
           </button>
         </div>
 
-        <div className="absolute bottom-8 left-10 right-10 flex justify-between items-end">
+        <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-10 md:right-10 flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end gap-4 md:gap-0">
           <div>
-            <h2 className="text-5xl font-extrabold text-white mb-2 tracking-tight drop-shadow-md">{city.name}</h2>
-            <p className="text-indigo-200 font-medium text-lg drop-shadow-md">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-1 md:mb-2 tracking-tight drop-shadow-md">{city.name}</h2>
+            <p className="text-indigo-200 font-medium text-sm md:text-lg drop-shadow-md">
               <i className="fa-regular fa-calendar mr-2"></i> {city.dates} • {city.nights} Nights
             </p>
           </div>
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-5 border border-white/20 text-white flex gap-8 shadow-2xl">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 md:p-5 border border-white/20 text-white flex gap-4 md:gap-8 shadow-2xl self-stretch md:self-auto justify-between md:justify-start">
             <div>
               <p className="text-[10px] text-indigo-200 uppercase tracking-widest font-bold mb-1">City Budget</p>
               <p className="font-extrabold text-2xl">€{city.totalBudget}</p>
@@ -45,10 +57,12 @@ export default function CityView({ city, onEditCity, onChangeStay, onAddActivity
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-10">
-        <div className="max-w-5xl mx-auto flex gap-10">
-          
-          <div className="flex-1">
+      <div className="flex-1 overflow-y-auto" id="city-scroll">
+        <PullToRefresh onRefresh={onRefresh} pullDownThreshold={60} maxPullDownDistance={100}>
+          <div className="p-4 md:p-10 min-h-[50vh]">
+            <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 md:gap-10">
+              
+              <div className="flex-1 min-w-0">
             <div className="mb-12">
               <div className="flex justify-between items-end mb-5">
                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3"><i className="fa-solid fa-bed text-indigo-500 bg-indigo-50 p-2 rounded-lg"></i> Accommodation</h3>
@@ -134,7 +148,7 @@ export default function CityView({ city, onEditCity, onChangeStay, onAddActivity
             </div>
           </div>
 
-          <div className="w-80 shrink-0 space-y-8">
+          <div className="w-full lg:w-80 shrink-0 space-y-6 md:space-y-8">
             <div>
               <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Location</h4>
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-40 relative group cursor-pointer">
@@ -172,6 +186,8 @@ export default function CityView({ city, onEditCity, onChangeStay, onAddActivity
           </div>
         </div>
       </div>
-    </div>
+    </PullToRefresh>
+  </div>
+</div>
   );
 }

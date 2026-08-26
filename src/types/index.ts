@@ -1,4 +1,12 @@
-export type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger" | "checklist";
+export type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger" | "checklist" | "addTrip" | "editTrip";
+
+export interface Trip {
+  id: string;
+  name: string;
+  dates?: string;
+  notes?: string;
+  created_at: string;
+}
 
 export interface Hotel {
   id?: string;

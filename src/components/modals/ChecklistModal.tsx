@@ -20,7 +20,7 @@ export default function ChecklistModal({ checklist, onAdd, onToggle, onDelete }:
       <div className="relative">
         <input 
           type="text" 
-          placeholder="Add a new task... (press Enter)"
+          placeholder="Ajouter une nouvelle tâche... (Appuyez sur Entrée)"
           onKeyDown={handleKeyDown}
           className="w-full px-4 py-3 pl-11 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium" 
         />
@@ -31,7 +31,7 @@ export default function ChecklistModal({ checklist, onAdd, onToggle, onDelete }:
         {checklist.length === 0 ? (
           <div className="text-center py-8 text-slate-500 font-medium">
             <i className="fa-solid fa-clipboard-check text-4xl mb-3 text-slate-300 block"></i>
-            Your checklist is empty. Add items above to start preparing!
+            Votre checklist est vide. Ajoutez des éléments ci-dessus pour commencer à vous préparer !
           </div>
         ) : (
           checklist.map(item => (
