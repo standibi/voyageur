@@ -9,7 +9,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Voyageur",
-  description: "Roadtrip planner for France",
+  description: "Planificateur de roadtrip pour la France",
 };
 
 export default function RootLayout({
@@ -18,14 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${jakarta.variable} font-sans`}>
+    <html lang="fr" className={`${jakarta.variable} font-sans`}>
       <head>
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         />
       </head>
-      <body className="h-screen w-screen overflow-hidden flex bg-slate-50 text-slate-900">
+      <body className="h-[100dvh] w-screen overflow-hidden flex bg-slate-50 text-slate-900">
         {children}
       </body>
     </html>

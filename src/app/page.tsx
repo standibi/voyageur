@@ -1,322 +1,169 @@
+import { tripsService } from "@/services/trips";
+import { parseDateRange } from "@/utils/dateUtils";
 "use client";
+import PullToRefresh from "react-simple-pull-to-refresh";
 import { useState } from "react";
-import { useTripData } from "@/hooks/useTripData";
-import { ModalType, Activity } from "@/types";
-import Sidebar from "@/components/layout/Sidebar";
-import CityView from "@/components/city/CityView";
+import { useRouter } from "next/navigation";
+import { useTrips } from "@/hooks/useTrips";
+import { ModalType, Trip } from "@/types";
 import Modal from "@/components/modals/Modal";
-import ChecklistModal from "@/components/modals/ChecklistModal";
+import { formatDateRangeDisplay } from "@/utils/dateUtils";
+
 
 export default function Home() {
-  const { supabase, tripData, currentCityId, setCurrentCityId, checklist, isLoading, fetchData } = useTripData();
+  const router = useRouter();
+  const { trips, isLoading, fetchTrips } = useTrips();
   const [activeModal, setActiveModal] = useState<ModalType>("none");
-  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   const closeModal = () => {
     setActiveModal("none");
-    setEditingActivity(null);
+    setEditingTrip(null);
   };
 
-  // --- MUTATION HANDLERS ---
-  const handleAddDestination = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddTrip = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const { data: trip } = await supabase.from('trips').select('id').limit(1).single();
-    await supabase.from('cities').insert({
-      trip_id: trip?.id,
-      name: fd.get('name'),
-      dates: fd.get('dates'),
-      nights: Number(fd.get('nights')),
-      allocated_budget: Number(fd.get('allocated_budget')),
-      img_url: fd.get('img_url') || null
+    const formData = new FormData(e.currentTarget);
+    const start_date = formData.get("start_date") as string;
+    const end_date = formData.get("end_date") as string;
+    const dates = start_date && end_date ? `${start_date} au ${end_date}` : null;
+    
+    await tripsService.create({ 
+      name: formData.get("name"),
+      dates,
+      notes: formData.get("notes") as string || null
     });
     closeModal();
-    fetchData(true);
+    fetchTrips();
   };
 
-  const handleEditCity = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleEditTrip = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if(!currentCityId) return;
-    const fd = new FormData(e.currentTarget);
-    await supabase.from('cities').update({
-      name: fd.get('name'), dates: fd.get('dates'), nights: Number(fd.get('nights')), img_url: fd.get('img_url') || null
-    }).eq('id', currentCityId);
+    if (!editingTrip) return;
+    const formData = new FormData(e.currentTarget);
+    const start_date = formData.get("start_date") as string;
+    const end_date = formData.get("end_date") as string;
+    const dates = start_date && end_date ? `${start_date} au ${end_date}` : null;
+
+    await tripsService.update(editingTrip.id, { 
+      name: formData.get("name"),
+      dates,
+      notes: formData.get("notes") as string || null
+    });
     closeModal();
-    fetchData(true);
+    fetchTrips();
   };
 
-  const handleDeleteCity = async () => {
-    if(!currentCityId) return;
-    await supabase.from('cities').delete().eq('id', currentCityId);
-    closeModal();
-    fetchData(false);
+  const handleDeleteTrip = async (id: string) => {
+    await tripsService.delete(id);
+    fetchTrips();
   };
 
-  const handleChangeStay = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if(!currentCityId) return;
-    const fd = new FormData(e.currentTarget);
-    const city = tripData[currentCityId];
-    const price = Number(fd.get('price_total') || 0);
-
-    if (city.hotel.id) {
-      await supabase.from('hotels').update({
-        name: fd.get('name'), stars: Number(fd.get('stars')), address: fd.get('address'),
-        price_total: price, img_url: fd.get('img_url'), check_in: fd.get('check_in'), check_out: fd.get('check_out')
-      }).eq('id', city.hotel.id);
-      await supabase.from('expenses').update({ amount: price }).eq('related_hotel_id', city.hotel.id);
-    } else {
-      const { data: newHotel } = await supabase.from('hotels').insert({
-        city_id: currentCityId, name: fd.get('name'), stars: Number(fd.get('stars')), address: fd.get('address'),
-        price_total: price, img_url: fd.get('img_url'), check_in: fd.get('check_in'), check_out: fd.get('check_out')
-      }).select().single();
-      if(newHotel) await supabase.from('expenses').insert({ city_id: currentCityId, amount: price, category: 'stay', related_hotel_id: newHotel.id });
-    }
-    closeModal();
-    fetchData(true);
-  };
-
-  const handleSaveActivity = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if(!currentCityId) return;
-    const fd = new FormData(e.currentTarget);
-    const price = Number(fd.get('price') || 0);
-    const isFood = fd.get('icon_name') === 'fa-utensils';
-    
-    const activityData = {
-      city_id: currentCityId,
-      name: fd.get('name'), day_title: fd.get('day_title'), date: fd.get('day_title'), time: fd.get('time'),
-      price: price, description: fd.get('description'), icon_name: fd.get('icon_name'),
-      color_class: `text-${fd.get('color')}-500`, bg_class: `bg-${fd.get('color')}-50`,
-    };
-
-    if (editingActivity?.id) {
-      await supabase.from('activities').update(activityData).eq('id', editingActivity.id);
-      await supabase.from('expenses').update({ amount: price, category: isFood ? 'food' : 'activity' }).eq('related_activity_id', editingActivity.id);
-    } else {
-      const { data: newAct } = await supabase.from('activities').insert(activityData).select().single();
-      if (newAct) await supabase.from('expenses').insert({ city_id: currentCityId, amount: price, category: isFood ? 'food' : 'activity', related_activity_id: newAct.id });
-    }
-    closeModal();
-    fetchData(true);
-  };
-
-  const handleDeleteActivity = async () => {
-    if(!editingActivity?.id) return;
-    await supabase.from('activities').delete().eq('id', editingActivity.id);
-    closeModal();
-    fetchData(true);
-  };
-
-  const handleAddChecklistItem = async (title: string) => {
-    const tripId = Object.values(tripData)[0]?.trip_id;
-    if (!tripId) return;
-    await supabase.from('checklist_items').insert({ trip_id: tripId, title });
-    fetchData(true);
-  };
-
-  const handleToggleChecklistItem = async (id: string, is_completed: boolean) => {
-    await supabase.from('checklist_items').update({ is_completed }).eq('id', id);
-    fetchData(true);
-  };
-
-  const handleDeleteChecklistItem = async (id: string) => {
-    await supabase.from('checklist_items').delete().eq('id', id);
-    fetchData(true);
-  };
-
-  if (isLoading && Object.keys(tripData).length === 0) return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Loading Trip Data...</div>;
-  
-  if (!currentCityId || !tripData[currentCityId]) {
-    return (
-      <>
-        <Modal title="Add New Destination" isOpen={activeModal === "addDestination"} onClose={closeModal}>
-          <form onSubmit={handleAddDestination} className="space-y-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label><input name="name" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label><input name="dates" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label><input name="nights" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            </div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label><input name="img_url" type="url" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Estimated Budget (€)</label><input name="allocated_budget" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Destination</button></div>
-          </form>
-        </Modal>
-
-        <Modal title="Trip Checklist" isOpen={activeModal === "checklist"} onClose={closeModal}>
-          <ChecklistModal 
-            checklist={checklist}
-            onAdd={handleAddChecklistItem}
-            onToggle={handleToggleChecklistItem}
-            onDelete={handleDeleteChecklistItem}
-          />
-        </Modal>
-
-        <Sidebar 
-          tripData={tripData} 
-          currentCityId={null} 
-          setCurrentCityId={setCurrentCityId} 
-          onAddDestination={() => setActiveModal("addDestination")} 
-          onOpenChecklist={() => setActiveModal("checklist")}
-        />
-        
-        <div className="flex-1 h-full flex flex-col items-center justify-center bg-slate-50 relative p-10">
-           <div className="max-w-md w-full text-center">
-             <div className="w-24 h-24 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm border border-indigo-100">
-               <i className="fa-solid fa-map-location-dot"></i>
-             </div>
-             <h2 className="text-3xl font-extrabold text-slate-800 mb-3">Plan Your Next Adventure</h2>
-             <p className="text-slate-500 text-lg mb-8">Your itinerary is currently empty. Start by adding a destination to your roadtrip!</p>
-             <button onClick={() => setActiveModal("addDestination")} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg shadow-indigo-600/30 transition-transform transform hover:scale-105 flex items-center gap-3 mx-auto text-lg">
-                <i className="fa-solid fa-plane-departure"></i> Let's Go!
-             </button>
-           </div>
-        </div>
-      </>
-    );
-  }
-
-  const city = tripData[currentCityId];
+  if (isLoading) return <div className="flex-1 w-full h-[100dvh] flex flex-col items-center justify-center font-bold text-slate-500 gap-4"><i className="fa-solid fa-plane-departure text-3xl animate-pulse text-indigo-400"></i><span>Chargement des voyages...</span></div>;
 
   return (
-    <>
-      {/* ADD DESTINATION MODAL */}
-      <Modal title="Add New Destination" isOpen={activeModal === "addDestination"} onClose={closeModal}>
-        <form onSubmit={handleAddDestination} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label><input name="name" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label><input name="dates" required type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label><input name="nights" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+    <div className="flex-1 bg-slate-50 h-[100dvh] flex flex-col relative overflow-hidden">
+      {/* Decorative background blobs */}
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-100/50 to-transparent -z-10"></div>
+      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl -z-10"></div>
+      
+      <Modal title="Ajouter un nouveau voyage" isOpen={activeModal === "addTrip"} onClose={closeModal}>
+        <form onSubmit={handleAddTrip} className="space-y-4">
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label><input name="name" required type="text" placeholder="Ex: Vacances Été 2026" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de début</label><input name="start_date" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de fin</label><input name="end_date" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
           </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label><input name="img_url" type="url" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Estimated Budget (€)</label><input name="allocated_budget" required type="number" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Destination</button></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label><textarea name="notes" placeholder="Notes générales pour ce voyage..." className="w-full px-4 py-2 border border-slate-300 rounded-lg h-24" /></div>
+          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Annuler</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Créer le voyage</button></div>
         </form>
       </Modal>
 
-      {/* EDIT CITY MODAL */}
-      <Modal title={`Edit ${city.name}`} isOpen={activeModal === "editCity"} onClose={closeModal}>
-        <form onSubmit={handleEditCity} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label><input name="name" required type="text" defaultValue={city.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label><input name="dates" required type="text" defaultValue={city.dates} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label><input name="nights" required type="number" defaultValue={city.nights} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label><input name="img_url" type="url" defaultValue={city.img} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-            <button type="button" onClick={handleDeleteCity} className="px-4 py-2 rounded-xl font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100"><i className="fa-solid fa-trash"></i> Delete City</button>
-            <div className="flex gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Changes</button></div>
-          </div>
-        </form>
-      </Modal>
-
-      {/* CHANGE STAY MODAL */}
-      <Modal title={`Update Stay in ${city.name}`} isOpen={activeModal === "changeStay"} onClose={closeModal}>
-        <form onSubmit={handleChangeStay} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Hotel Name</label><input name="name" required type="text" defaultValue={city.hotel.name !== 'No Hotel Selected' ? city.hotel.name : ''} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Star Rating (1-5)</label><input name="stars" required type="number" min="1" max="5" defaultValue={city.hotel.stars || 4} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Total Price</label><input name="price_total" required type="number" defaultValue={city.hotel.price_total || 0} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Address</label><input name="address" required type="text" defaultValue={city.hotel.address} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Check-in</label><input name="check_in" required type="text" defaultValue={city.hotel.check_in} placeholder="e.g. May 18, 15:00" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Check-out</label><input name="check_out" required type="text" defaultValue={city.hotel.check_out} placeholder="e.g. May 20, 11:00" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Hotel Image URL</label><input name="img_url" required type="url" defaultValue={city.hotel.img_url} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Stay</button></div>
-        </form>
-      </Modal>
-
-      {/* ACTIVITY MODAL */}
-      <Modal title={editingActivity ? "Edit Activity" : "Add New Activity"} isOpen={activeModal === "addActivity" || activeModal === "editActivity"} onClose={closeModal}>
-        <form onSubmit={handleSaveActivity} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Activity Name</label><input name="name" required type="text" defaultValue={editingActivity?.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date</label><input name="day_title" required type="text" defaultValue={editingActivity?.date || city.dates.split(' - ')[0]} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Time</label><input name="time" required type="text" defaultValue={editingActivity?.time} placeholder="e.g. 2:00 PM" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Price (€)</label><input name="price" required type="number" defaultValue={editingActivity?.price} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Description</label><textarea name="description" required rows={3} defaultValue={editingActivity?.description} className="w-full px-4 py-2 border border-slate-300 rounded-lg"></textarea></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Icon (FontAwesome)</label><input name="icon_name" required type="text" defaultValue={editingActivity?.icon_name || 'fa-star'} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Color Theme</label>
-              <select name="color" defaultValue={editingActivity ? editingActivity.color_class.split('-')[1] : "indigo"} className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-white">
-                <option value="indigo">Indigo</option><option value="rose">Rose</option><option value="emerald">Emerald</option><option value="cyan">Cyan</option><option value="amber">Amber</option>
-              </select>
+      <Modal title="Modifier le voyage" isOpen={activeModal === "editTrip"} onClose={closeModal}>
+        {editingTrip && (
+          <form onSubmit={handleEditTrip} className="space-y-4">
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label><input name="name" required type="text" defaultValue={editingTrip.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de début</label><input name="start_date" type="date" defaultValue={parseDateRange(editingTrip.dates).start} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
+              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de fin</label><input name="end_date" type="date" defaultValue={parseDateRange(editingTrip.dates).end} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
             </div>
-          </div>
-          <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-            <div>{editingActivity && <button type="button" onClick={handleDeleteActivity} className="px-4 py-2 rounded-xl font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100"><i className="fa-solid fa-trash"></i> Delete Activity</button>}</div>
-            <div className="flex gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Cancel</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save Activity</button></div>
-          </div>
-        </form>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label><textarea name="notes" defaultValue={editingTrip.notes || ''} className="w-full px-4 py-2 border border-slate-300 rounded-lg h-24" /></div>
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Annuler</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Enregistrer</button></div>
+          </form>
+        )}
       </Modal>
 
-      {/* LEDGER MODAL */}
-      <Modal title={`${city.name} - Detailed Ledger`} isOpen={activeModal === "ledger"} onClose={closeModal}>
-        <div className="space-y-4">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 text-sm">
-                <th className="py-2 font-medium">Item</th><th className="py-2 font-medium">Category</th><th className="py-2 font-medium text-right">Cost</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              <tr className="border-b border-slate-100 group hover:bg-slate-50 transition-colors">
-                <td className="py-3 font-semibold text-slate-800">{city.hotel.name}</td>
-                <td className="py-3 text-slate-500"><span className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-bold">Stay</span></td>
-                <td className="py-3 text-right font-bold">€{city.breakdown.stay}</td>
-              </tr>
-              {city.rawActivities.map((act) => {
-                  const isFood = act.icon_name === "fa-utensils";
-                  const catClass = isFood ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600";
-                  const catName = isFood ? "Food" : "Activity";
+      <div className="flex-1 overflow-y-auto" id="main-scroll-container">
+        <PullToRefresh onRefresh={fetchTrips} pullDownThreshold={60} maxPullDownDistance={100}>
+          <div className="p-4 sm:p-6 md:p-12 lg:p-20 max-w-6xl w-full mx-auto relative z-10 min-h-screen">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-10 md:mb-12">
+              <div>
+                <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-3 tracking-tight">Mes Voyages</h1>
+                <p className="text-slate-500 text-base md:text-lg max-w-md">Sélectionnez un voyage pour voir ou modifier votre itinéraire.</p>
+              </div>
+              <button onClick={() => setActiveModal("addTrip")} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 md:px-8 rounded-xl shadow-lg shadow-indigo-600/25 transition-transform transform hover:-translate-y-1 w-full sm:w-auto flex justify-center items-center gap-2 text-lg">
+                <i className="fa-solid fa-plus"></i> Nouveau Voyage
+              </button>
+            </div>
+
+            {trips.length === 0 ? (
+              <div className="text-center py-24 bg-white/80 backdrop-blur-sm rounded-3xl shadow-sm border border-slate-200/60">
+                <div className="w-24 h-24 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center text-5xl mx-auto mb-6"><i className="fa-solid fa-plane-departure"></i></div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-3">Aucun voyage pour le moment</h2>
+                <p className="text-slate-500 mb-8 max-w-sm mx-auto text-lg">Commencez par créer votre premier voyage pour y ajouter vos destinations.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                {trips.map((trip, idx) => {
+                  const gradients = [
+                    "from-blue-500 to-indigo-600",
+                    "from-emerald-400 to-teal-500",
+                    "from-orange-400 to-rose-500",
+                    "from-purple-500 to-fuchsia-600",
+                    "from-cyan-400 to-blue-500"
+                  ];
+                  const gradient = gradients[idx % gradients.length];
+                  
                   return (
-                    <tr key={act.id} className="border-b border-slate-100 group hover:bg-slate-50 transition-colors">
-                      <td className="py-3 font-semibold text-slate-800">{act.name}</td>
-                      <td className="py-3 text-slate-500"><span className={`${catClass} px-2 py-1 rounded text-xs font-bold`}>{catName}</span></td>
-                      <td className="py-3 text-right font-bold">€{act.price}</td>
-                    </tr>
-                  )
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="text-lg">
-                <td colSpan={2} className="py-4 font-bold text-slate-800">Total City Budget</td>
-                <td className="py-4 text-right font-extrabold text-indigo-600">€{city.totalBudget}</td>
-              </tr>
-            </tfoot>
-          </table>
-          <div className="pt-4 border-t border-slate-100 flex justify-end"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Close</button></div>
-        </div>
-      </Modal>
-
-      {/* CHECKLIST MODAL */}
-      <Modal title="Trip Checklist" isOpen={activeModal === "checklist"} onClose={closeModal}>
-        <ChecklistModal 
-          checklist={checklist}
-          onAdd={handleAddChecklistItem}
-          onToggle={handleToggleChecklistItem}
-          onDelete={handleDeleteChecklistItem}
-        />
-      </Modal>
-
-      <Sidebar 
-        tripData={tripData} 
-        currentCityId={currentCityId} 
-        setCurrentCityId={setCurrentCityId} 
-        onAddDestination={() => setActiveModal("addDestination")} 
-        onOpenChecklist={() => setActiveModal("checklist")}
-      />
-      <CityView 
-        city={city} 
-        onEditCity={() => setActiveModal("editCity")} 
-        onChangeStay={() => setActiveModal("changeStay")} 
-        onAddActivity={() => { setEditingActivity(null); setActiveModal("addActivity"); }} 
-        onEditActivity={(act) => { setEditingActivity(act); setActiveModal("editActivity"); }} 
-        onViewLedger={() => setActiveModal("ledger")} 
-      />
-    </>
+                    <div key={trip.id} onClick={() => router.push(`/trip/${trip.id}`)} className="bg-white rounded-3xl shadow-sm border border-slate-200/75 hover:shadow-2xl hover:shadow-indigo-100 transition-all cursor-pointer group flex flex-col justify-between overflow-hidden relative transform hover:-translate-y-1">
+                      <div className={`h-3 w-full bg-gradient-to-r ${gradient}`}></div>
+                      <div className="p-6 md:p-8 flex flex-col flex-1">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl text-white bg-gradient-to-br ${gradient} shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                            <i className="fa-solid fa-plane"></i>
+                          </div>
+                          <div className="flex gap-1 bg-slate-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingTrip(trip); setActiveModal("editTrip"); }} className="text-slate-400 hover:text-indigo-600 hover:bg-white rounded-full w-8 h-8 flex items-center justify-center transition-all shadow-sm"><i className="fa-solid fa-pen text-sm"></i></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteTrip(trip.id); }} className="text-slate-400 hover:text-rose-500 hover:bg-white rounded-full w-8 h-8 flex items-center justify-center transition-all shadow-sm"><i className="fa-solid fa-trash text-sm"></i></button>
+                          </div>
+                        </div>
+                        
+                        <h3 className="text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors mb-3 line-clamp-2">{trip.name}</h3>
+                        
+                        {trip.dates ? (
+                          <div className="inline-flex items-center gap-2 bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-semibold w-fit">
+                            <i className="fa-regular fa-calendar text-indigo-500"></i> {formatDateRangeDisplay(trip.dates)}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 bg-slate-50 text-slate-400 px-3 py-1.5 rounded-lg text-sm font-medium w-fit border border-slate-100">
+                            <i className="fa-regular fa-calendar-xmark"></i> Dates à définir
+                          </div>
+                        )}
+                        
+                        <div className="mt-auto pt-8 flex justify-end">
+                          <span className="text-sm font-bold text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all bg-indigo-50 px-4 py-2 rounded-xl group-hover:bg-indigo-100">
+                            Ouvrir le voyage <i className="fa-solid fa-arrow-right"></i>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </PullToRefresh>
+      </div>
+    </div>
   );
 }

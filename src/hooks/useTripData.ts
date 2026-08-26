@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { CityData } from "@/types";
+import { CityData, Trip } from "@/types";
+import { tripsService } from "@/services/trips";
+import { citiesService } from "@/services/cities";
+import { hotelsService } from "@/services/hotels";
+import { activitiesService } from "@/services/activities";
+import { expensesService } from "@/services/expenses";
+import { checklistService } from "@/services/checklist";
+import { transformTripData } from "@/utils/transformers";
 
-export function useTripData() {
-  const supabase = createClient();
+export function useTripData(tripId: string) {
+  const [trip, setTrip] = useState<Trip | null>(null);
   const [tripData, setTripData] = useState<Record<string, CityData>>({});
   const [currentCityId, setCurrentCityId] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<any[]>([]);
@@ -11,7 +17,12 @@ export function useTripData() {
 
   const fetchData = async (preserveCityId = false) => {
     setIsLoading(true);
-    const { data: cities } = await supabase.from('cities').select('*').order('created_at', { ascending: true });
+    
+    // Fetch the trip metadata
+    const { data: tripMeta } = await tripsService.getById(tripId);
+    if (tripMeta) setTrip(tripMeta);
+
+    const { data: cities } = await citiesService.getByTripId(tripId);
     
     if (!cities || cities.length === 0) {
       setTripData({});
@@ -21,73 +32,42 @@ export function useTripData() {
       return;
     }
 
-    const cityIds = cities.map(c => c.id);
-    const tripId = cities[0].trip_id;
-    const { data: hotels } = await supabase.from('hotels').select('*').in('city_id', cityIds);
-    const { data: activities } = await supabase.from('activities').select('*').in('city_id', cityIds).order('sort_order', { ascending: true });
-    const { data: expenses } = await supabase.from('expenses').select('*').in('city_id', cityIds);
-    const { data: checklistItems } = await supabase.from('checklist_items').select('*').eq('trip_id', tripId).order('created_at', { ascending: true });
+    const cityIds = cities.map((c: any) => c.id);
+    const { data: hotels } = await hotelsService.getByCityIds(cityIds);
+    const { data: activities } = await activitiesService.getByCityIds(cityIds);
+    const { data: expenses } = await expensesService.getByCityIds(cityIds);
+    const { data: checklistItems } = await checklistService.getByTripId(tripId);
 
     if (checklistItems) setChecklist(checklistItems);
 
-    const formattedData: Record<string, CityData> = {};
-
-    cities.forEach(city => {
-      const cityHotels = hotels?.filter(h => h.city_id === city.id) || [];
-      const hotel = cityHotels.length > 0 ? cityHotels[0] : { name: 'No Hotel Selected', price_total: 0, stars: 0, address: '', check_in: '', check_out: '', img_url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80' };
-      
-      const cityActivities = activities?.filter(a => a.city_id === city.id) || [];
-      const cityExpenses = expenses?.filter(e => e.city_id === city.id) || [];
-
-      const timelineMap = new Map();
-      cityActivities.forEach(act => {
-        const key = `${act.date}|${act.day_title}`;
-        if (!timelineMap.has(key)) timelineMap.set(key, { dayTitle: act.day_title, date: act.date, activities: [] });
-        timelineMap.get(key).activities.push({ ...act, icon: act.icon_name, color: act.color_class, bg: act.bg_class, desc: act.description });
-      });
-
-      const timeline = Array.from(timelineMap.values());
-      const breakdown = { stay: 0, act: 0, food: 0, transport: 0, misc: 0, activity: 0 };
-      
-      cityExpenses.forEach(exp => {
-        if (breakdown[exp.category as keyof typeof breakdown] !== undefined) {
-          breakdown[exp.category as keyof typeof breakdown] += Number(exp.amount);
-        }
-      });
-
-      formattedData[city.id] = {
-        id: city.id,
-        trip_id: city.trip_id,
-        name: city.name,
-        dates: city.dates,
-        nights: city.nights,
-        totalBudget: Number(city.allocated_budget),
-        img: city.img_url || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2000&q=80',
-        breakdown,
-        hotel,
-        timeline,
-        rawActivities: cityActivities,
-        rawExpenses: cityExpenses
-      };
-    });
+    const formattedData = transformTripData(
+      cities,
+      hotels || [],
+      activities || [],
+      expenses || []
+    );
 
     setTripData(formattedData);
     
     // Only update currentCityId if we are not preserving it, or if it's currently null
     if (!preserveCityId || !currentCityId || !formattedData[currentCityId]) {
-      // If we are preserving but the city was deleted, fallback to first city
-      setCurrentCityId(cities[0].id);
+      // Automatically select the first city on desktop screens (>= 768px)
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+        setCurrentCityId(cities[0].id);
+      } else {
+        setCurrentCityId(null);
+      }
     }
     
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (tripId) fetchData();
+  }, [tripId]);
 
   return {
-    supabase,
+    trip,
     tripData,
     currentCityId,
     setCurrentCityId,
