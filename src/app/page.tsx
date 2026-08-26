@@ -113,14 +113,182 @@ const DATA = {
   },
 };
 
+type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "addDestination";
+
 export default function Home() {
   const [currentCityId, setCurrentCityId] = useState<keyof typeof DATA>("paris");
-  const city = DATA[currentCityId];
+  const [activeModal, setActiveModal] = useState<ModalType>("none");
 
+  const city = DATA[currentCityId];
   const actCount = city.timeline.reduce((acc, day) => acc + day.activities.length, 0);
+
+  const closeModal = () => setActiveModal("none");
+
+  const Modal = ({ title, children, isOpen }: { title: string, children: React.ReactNode, isOpen: boolean }) => {
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeModal}>
+        <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h3 className="font-bold text-xl text-slate-800">{title}</h3>
+            <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[70vh]">
+            {children}
+          </div>
+          <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+            <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+            <button onClick={closeModal} className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20">Save Details</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
+      {/* Modals */}
+      
+      {/* Add Destination Modal */}
+      <Modal title="Add New Destination" isOpen={activeModal === "addDestination"}>
+        <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label>
+            <input type="text" placeholder="e.g. Bordeaux" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label>
+              <input type="text" placeholder="May 25 - 27" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label>
+              <input type="number" placeholder="2" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label>
+            <input type="url" placeholder="https://..." className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Estimated Budget (€)</label>
+            <input type="number" placeholder="500" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit City Modal */}
+      <Modal title={`Edit ${city.name}`} isOpen={activeModal === "editCity"}>
+        <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">City Name</label>
+            <input type="text" defaultValue={city.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Dates</label>
+              <input type="text" defaultValue={city.dates} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Nights</label>
+              <input type="number" defaultValue={city.nights} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Cover Image URL</label>
+            <input type="url" defaultValue={city.img} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Change Stay Modal */}
+      <Modal title={`Update Stay in ${city.name}`} isOpen={activeModal === "changeStay"}>
+        <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Hotel Name</label>
+            <input type="text" defaultValue={city.hotel.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Star Rating (1-5)</label>
+              <input type="number" min="1" max="5" defaultValue={city.hotel.stars} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Total Price</label>
+              <input type="text" defaultValue={city.hotel.price} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Address</label>
+            <input type="text" defaultValue={city.hotel.address} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Check-in</label>
+              <input type="text" defaultValue={city.hotel.checkIn} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Check-out</label>
+              <input type="text" defaultValue={city.hotel.checkOut} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Hotel Image URL</label>
+            <input type="url" defaultValue={city.hotel.img} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Activity Modal */}
+      <Modal title="Add New Activity" isOpen={activeModal === "addActivity"}>
+        <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Activity Name</label>
+            <input type="text" placeholder="e.g. Wine Tasting" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Day</label>
+              <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                {city.timeline.map((day, idx) => (
+                  <option key={idx} value={day.date}>{day.dayTitle}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Time</label>
+              <input type="text" placeholder="2:00 PM" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Price</label>
+            <input type="text" placeholder="€45" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Description</label>
+            <textarea rows={3} placeholder="Tasting at a local vineyard..." className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Icon (FontAwesome Class)</label>
+              <input type="text" placeholder="fa-wine-glass" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Color Theme</label>
+              <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <option value="indigo">Indigo</option>
+                <option value="rose">Rose</option>
+                <option value="emerald">Emerald</option>
+                <option value="cyan">Cyan</option>
+                <option value="amber">Amber</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
       {/* Sidebar: Itinerary / Cities List */}
       <div className="w-80 bg-white border-r border-slate-200 h-full flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
         <div className="p-6 border-b border-slate-100">
@@ -189,7 +357,7 @@ export default function Home() {
         </div>
 
         <div className="p-4 border-t border-slate-100">
-          <button className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-slate-900/20 flex justify-center items-center gap-2">
+          <button onClick={() => setActiveModal("addDestination")} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition-colors shadow-lg shadow-slate-900/20 flex justify-center items-center gap-2">
             <i className="fa-solid fa-plus"></i> Add Destination
           </button>
         </div>
@@ -198,7 +366,7 @@ export default function Home() {
       {/* Main Content: City Details & Activity Timeline */}
       <div className="flex-1 h-full flex flex-col bg-slate-50/50 overflow-hidden relative">
         {/* City Header */}
-        <div className="h-72 relative shrink-0">
+        <div className="h-72 relative shrink-0 group">
           <img
             src={city.img}
             className="w-full h-full object-cover"
@@ -206,8 +374,8 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
 
-          <div className="absolute top-6 right-6 flex gap-3">
-            <button className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
+          <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => setActiveModal("editCity")} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-lg font-medium transition-colors text-sm flex items-center gap-2">
               <i className="fa-solid fa-pen"></i> Edit City
             </button>
           </div>
@@ -252,7 +420,7 @@ export default function Home() {
                     <i className="fa-solid fa-bed text-indigo-500 bg-indigo-50 p-2 rounded-lg"></i>{" "}
                     Accommodation
                   </h3>
-                  <button className="text-indigo-600 font-semibold hover:text-indigo-700 text-sm flex items-center gap-1">
+                  <button onClick={() => setActiveModal("changeStay")} className="text-indigo-600 font-semibold hover:text-indigo-700 text-sm flex items-center gap-1">
                     <i className="fa-solid fa-arrows-rotate"></i> Change Stay
                   </button>
                 </div>
@@ -320,7 +488,7 @@ export default function Home() {
                     <i className="fa-solid fa-list-check text-indigo-500 bg-indigo-50 p-2 rounded-lg"></i>{" "}
                     Itinerary
                   </h3>
-                  <button className="text-indigo-600 font-semibold hover:text-indigo-700 text-sm">
+                  <button onClick={() => setActiveModal("addActivity")} className="text-indigo-600 font-semibold hover:text-indigo-700 text-sm">
                     <i className="fa-solid fa-plus mr-1"></i> Add Activity
                   </button>
                 </div>
