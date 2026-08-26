@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-const DATA = {
+const INITIAL_DATA = {
   paris: {
     id: "paris",
     name: "Paris",
@@ -116,13 +116,71 @@ const DATA = {
 type ModalType = "none" | "editCity" | "changeStay" | "addActivity" | "editActivity" | "addDestination" | "ledger";
 
 export default function Home() {
-  const [currentCityId, setCurrentCityId] = useState<keyof typeof DATA>("paris");
+  const [tripData, setTripData] = useState(INITIAL_DATA);
+  const [currentCityId, setCurrentCityId] = useState<keyof typeof INITIAL_DATA>("paris");
   const [activeModal, setActiveModal] = useState<ModalType>("none");
 
-  const city = DATA[currentCityId];
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState<{ dayIdx: number; actIdx: number } | null>(null);
+
+  const city = tripData[currentCityId];
+  if (!city) return null; // safety check if city is deleted (though we don't handle full deletion state yet)
+
   const actCount = city.timeline.reduce((acc, day) => acc + day.activities.length, 0);
 
   const closeModal = () => setActiveModal("none");
+
+  // --- Drag & Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, dayIdx: number, actIdx: number) => {
+    setDraggedItem({ dayIdx, actIdx });
+    e.dataTransfer.effectAllowed = "move";
+    // Wait a tick to set visual opacity so the drag ghost looks normal
+    setTimeout(() => {
+      if (e.target instanceof HTMLElement) {
+        e.target.style.opacity = "0.4";
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    if (e.target instanceof HTMLElement) {
+      e.target.style.opacity = "1";
+    }
+    setDraggedItem(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetDayIdx: number, targetActIdx: number) => {
+    e.preventDefault();
+    if (!draggedItem) return;
+    
+    // Prevent dropping on itself
+    if (draggedItem.dayIdx === targetDayIdx && draggedItem.actIdx === targetActIdx) {
+      return;
+    }
+
+    setTripData((prev) => {
+      const newData = { ...prev };
+      const currentCity = { ...newData[currentCityId] };
+      const newTimeline = JSON.parse(JSON.stringify(currentCity.timeline)); // Deep copy to avoid mutation issues
+
+      // Remove activity from source
+      const [movedActivity] = newTimeline[draggedItem.dayIdx].activities.splice(draggedItem.actIdx, 1);
+      
+      // Insert activity at destination
+      newTimeline[targetDayIdx].activities.splice(targetActIdx, 0, movedActivity);
+
+      currentCity.timeline = newTimeline;
+      newData[currentCityId] = currentCity;
+      return newData;
+    });
+    
+    setDraggedItem(null);
+  };
 
   const Modal = ({ title, children, isOpen, showDelete }: { title: string, children: React.ReactNode, isOpen: boolean, showDelete?: string }) => {
     if (!isOpen) return null;
@@ -158,8 +216,6 @@ export default function Home() {
 
   return (
     <>
-      {/* Modals */}
-      
       {/* Add Destination Modal */}
       <Modal title="Add New Destination" isOpen={activeModal === "addDestination"}>
         <form className="space-y-4" onSubmit={e => e.preventDefault()}>
@@ -342,7 +398,6 @@ export default function Home() {
         </div>
       </Modal>
 
-
       {/* Sidebar: Itinerary / Cities List */}
       <div className="w-80 bg-white border-r border-slate-200 h-full flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
         <div className="p-6 border-b border-slate-100">
@@ -366,12 +421,12 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {Object.values(DATA).map((c) => {
+          {Object.values(tripData).map((c) => {
             const isActive = c.id === currentCityId;
             return (
               <button
                 key={c.id}
-                onClick={() => setCurrentCityId(c.id as keyof typeof DATA)}
+                onClick={() => setCurrentCityId(c.id as keyof typeof INITIAL_DATA)}
                 className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between group ${
                   isActive
                     ? "border-2 border-indigo-600 bg-indigo-50 shadow-md transform scale-100"
@@ -563,6 +618,11 @@ export default function Home() {
                         {day.activities.map((act, i) => (
                           <div
                             key={i}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx, i)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, idx, i)}
                             className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 flex gap-5 hover:shadow-lg transition-all duration-300 group cursor-default relative overflow-hidden pl-8"
                           >
                             {/* Drag handle */}
