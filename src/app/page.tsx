@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTrips } from "@/hooks/useTrips";
 import { ModalType, Trip } from "@/types";
+import { withToast } from "@/utils/toast";
 import Modal from "@/components/modals/Modal";
 import { formatDateRangeDisplay } from "@/utils/dateUtils";
 
@@ -28,13 +29,24 @@ export default function Home() {
     const end_date = formData.get("end_date") as string;
     const dates = start_date && end_date ? `${start_date} au ${end_date}` : null;
     
-    await tripsService.create({ 
-      name: formData.get("name"),
-      dates,
-      notes: formData.get("notes") as string || null
-    });
-    closeModal();
-    fetchTrips();
+    try {
+      await withToast(
+        tripsService.create({ 
+          name: formData.get("name"),
+          dates,
+          notes: formData.get("notes") as string || null
+        }),
+        {
+          loading: 'Création du voyage...',
+          success: 'Voyage créé avec succès !',
+          error: 'Erreur lors de la création du voyage'
+        }
+      );
+      closeModal();
+      fetchTrips();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleEditTrip = async (e: React.FormEvent<HTMLFormElement>) => {
