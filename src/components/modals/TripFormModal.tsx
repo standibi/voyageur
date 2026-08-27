@@ -1,6 +1,9 @@
 import Modal from "@/components/modals/Modal";
 import { Trip, CreateTripInputSchema } from "@/types";
 import toast from "react-hot-toast";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Button } from "@/components/ui/Button";
 
 interface TripFormModalProps {
   isOpen: boolean;
@@ -35,59 +38,56 @@ export default function TripFormModal({ isOpen, onClose, initialData, onSubmit }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label>
-          <input 
+          <Input 
             name="name" 
+            label="Nom du voyage"
             required 
             type="text" 
             placeholder="Ex: Vacances Été 2026" 
             defaultValue={initialData?.name || ""}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg" 
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Date de début</label>
-            <input 
+            <Input 
               name="start_date" 
+              label="Date de début"
               type="date" 
               defaultValue={parsedDates.start}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg" 
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Date de fin</label>
-            <input 
+            <Input 
               name="end_date" 
+              label="Date de fin"
               type="date" 
               defaultValue={parsedDates.end}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg" 
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label>
-          <textarea 
+          <Textarea 
             name="notes" 
+            label="Notes"
             placeholder="Notes générales pour ce voyage..." 
             defaultValue={initialData?.notes || ""}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg h-24" 
+            className="h-24"
           />
         </div>
         <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-          <button 
+          <Button 
             type="button" 
             onClick={onClose} 
-            className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200"
+            variant="ghost"
           >
             Annuler
-          </button>
-          <button 
+          </Button>
+          <Button 
             type="submit" 
-            className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700"
+            variant="primary"
           >
             {isEditing ? "Enregistrer" : "Créer le voyage"}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
