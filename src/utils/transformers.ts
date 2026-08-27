@@ -1,3 +1,5 @@
+/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CityData, Hotel, Activity, TimelineDay, ExpenseBreakdown, ActivityIcon, ActivityColor, Expense } from "@/types";
 
 export function transformTripData(

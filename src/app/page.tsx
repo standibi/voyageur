@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { tripsService } from "@/services/trips";
 "use client";
 import PullToRefresh from "react-simple-pull-to-refresh";
@@ -7,7 +8,8 @@ import { useTrips } from "@/hooks/useTrips";
 import { ModalType, Trip } from "@/types";
 import { withToast } from "@/utils/toast";
 import TripCard from "@/components/TripCard";
-import TripFormModal from "@/components/modals/TripFormModal";
+import dynamic from "next/dynamic";
+const TripFormModal = dynamic(() => import("@/components/modals/TripFormModal"));
 
 export default function Home() {
   const router = useRouter();

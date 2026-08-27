@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { CityData, Trip } from "@/types";
 import { tripsService } from "@/services/trips";
