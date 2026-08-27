@@ -1,5 +1,4 @@
 import { tripsService } from "@/services/trips";
-import { parseDateRange } from "@/utils/dateUtils";
 "use client";
 import PullToRefresh from "react-simple-pull-to-refresh";
 import { useState } from "react";
@@ -7,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { useTrips } from "@/hooks/useTrips";
 import { ModalType, Trip } from "@/types";
 import { withToast } from "@/utils/toast";
-import Modal from "@/components/modals/Modal";
-import { formatDateRangeDisplay } from "@/utils/dateUtils";
-
+import TripCard from "@/components/TripCard";
+import TripFormModal from "@/components/modals/TripFormModal";
 
 export default function Home() {
   const router = useRouter();
@@ -22,48 +20,33 @@ export default function Home() {
     setEditingTrip(null);
   };
 
-  const handleAddTrip = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleTripSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const start_date = formData.get("start_date") as string;
     const end_date = formData.get("end_date") as string;
     const dates = start_date && end_date ? `${start_date} au ${end_date}` : null;
+    const name = formData.get("name") as string;
+    const notes = formData.get("notes") as string || null;
     
     try {
-      await withToast(
-        tripsService.create({ 
-          name: formData.get("name"),
-          dates,
-          notes: formData.get("notes") as string || null
-        }),
-        {
-          loading: 'Création du voyage...',
-          success: 'Voyage créé avec succès !',
-          error: 'Erreur lors de la création du voyage'
-        }
-      );
+      if (editingTrip) {
+        await tripsService.update(editingTrip.id, { name, dates, notes });
+      } else {
+        await withToast(
+          tripsService.create({ name, dates, notes }),
+          {
+            loading: 'Création du voyage...',
+            success: 'Voyage créé avec succès !',
+            error: 'Erreur lors de la création du voyage'
+          }
+        );
+      }
       closeModal();
       fetchTrips();
     } catch (error) {
       console.error(error);
     }
-  };
-
-  const handleEditTrip = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!editingTrip) return;
-    const formData = new FormData(e.currentTarget);
-    const start_date = formData.get("start_date") as string;
-    const end_date = formData.get("end_date") as string;
-    const dates = start_date && end_date ? `${start_date} au ${end_date}` : null;
-
-    await tripsService.update(editingTrip.id, { 
-      name: formData.get("name"),
-      dates,
-      notes: formData.get("notes") as string || null
-    });
-    closeModal();
-    fetchTrips();
   };
 
   const handleDeleteTrip = async (id: string) => {
@@ -79,31 +62,12 @@ export default function Home() {
       <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-100/50 to-transparent -z-10"></div>
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl -z-10"></div>
       
-      <Modal title="Ajouter un nouveau voyage" isOpen={activeModal === "addTrip"} onClose={closeModal}>
-        <form onSubmit={handleAddTrip} className="space-y-4">
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label><input name="name" required type="text" placeholder="Ex: Vacances Été 2026" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de début</label><input name="start_date" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de fin</label><input name="end_date" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-          </div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label><textarea name="notes" placeholder="Notes générales pour ce voyage..." className="w-full px-4 py-2 border border-slate-300 rounded-lg h-24" /></div>
-          <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Annuler</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Créer le voyage</button></div>
-        </form>
-      </Modal>
-
-      <Modal title="Modifier le voyage" isOpen={activeModal === "editTrip"} onClose={closeModal}>
-        {editingTrip && (
-          <form onSubmit={handleEditTrip} className="space-y-4">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label><input name="name" required type="text" defaultValue={editingTrip.name} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de début</label><input name="start_date" type="date" defaultValue={parseDateRange(editingTrip.dates).start} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-              <div><label className="block text-sm font-semibold text-slate-700 mb-1">Date de fin</label><input name="end_date" type="date" defaultValue={parseDateRange(editingTrip.dates).end} className="w-full px-4 py-2 border border-slate-300 rounded-lg" /></div>
-            </div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-1">Notes</label><textarea name="notes" defaultValue={editingTrip.notes || ''} className="w-full px-4 py-2 border border-slate-300 rounded-lg h-24" /></div>
-            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3"><button type="button" onClick={closeModal} className="px-5 py-2.5 rounded-xl font-medium text-slate-600 hover:bg-slate-200">Annuler</button><button type="submit" className="px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Enregistrer</button></div>
-          </form>
-        )}
-      </Modal>
+      <TripFormModal 
+        isOpen={activeModal === "addTrip" || activeModal === "editTrip"} 
+        onClose={closeModal} 
+        initialData={editingTrip} 
+        onSubmit={handleTripSubmit} 
+      />
 
       <div className="flex-1 overflow-y-auto" id="main-scroll-container">
         <PullToRefresh onRefresh={fetchTrips} pullDownThreshold={60} maxPullDownDistance={100}>
@@ -126,51 +90,16 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {trips.map((trip, idx) => {
-                  const gradients = [
-                    "from-blue-500 to-indigo-600",
-                    "from-emerald-400 to-teal-500",
-                    "from-orange-400 to-rose-500",
-                    "from-purple-500 to-fuchsia-600",
-                    "from-cyan-400 to-blue-500"
-                  ];
-                  const gradient = gradients[idx % gradients.length];
-                  
-                  return (
-                    <div key={trip.id} onClick={() => router.push(`/trip/${trip.id}`)} className="bg-white rounded-3xl shadow-sm border border-slate-200/75 hover:shadow-2xl hover:shadow-indigo-100 transition-all cursor-pointer group flex flex-col justify-between overflow-hidden relative transform hover:-translate-y-1">
-                      <div className={`h-3 w-full bg-gradient-to-r ${gradient}`}></div>
-                      <div className="p-6 md:p-8 flex flex-col flex-1">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl text-white bg-gradient-to-br ${gradient} shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                            <i className="fa-solid fa-plane"></i>
-                          </div>
-                          <div className="flex gap-1 bg-slate-50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingTrip(trip); setActiveModal("editTrip"); }} className="text-slate-400 hover:text-indigo-600 hover:bg-white rounded-full w-8 h-8 flex items-center justify-center transition-all shadow-sm"><i className="fa-solid fa-pen text-sm"></i></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteTrip(trip.id); }} className="text-slate-400 hover:text-rose-500 hover:bg-white rounded-full w-8 h-8 flex items-center justify-center transition-all shadow-sm"><i className="fa-solid fa-trash text-sm"></i></button>
-                          </div>
-                        </div>
-                        
-                        <h3 className="text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors mb-3 line-clamp-2">{trip.name}</h3>
-                        
-                        {trip.dates ? (
-                          <div className="inline-flex items-center gap-2 bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-semibold w-fit">
-                            <i className="fa-regular fa-calendar text-indigo-500"></i> {formatDateRangeDisplay(trip.dates)}
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-2 bg-slate-50 text-slate-400 px-3 py-1.5 rounded-lg text-sm font-medium w-fit border border-slate-100">
-                            <i className="fa-regular fa-calendar-xmark"></i> Dates à définir
-                          </div>
-                        )}
-                        
-                        <div className="mt-auto pt-8 flex justify-end">
-                          <span className="text-sm font-bold text-indigo-600 flex items-center gap-2 group-hover:gap-3 transition-all bg-indigo-50 px-4 py-2 rounded-xl group-hover:bg-indigo-100">
-                            Ouvrir le voyage <i className="fa-solid fa-arrow-right"></i>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {trips.map((trip, idx) => (
+                  <TripCard 
+                    key={trip.id} 
+                    trip={trip} 
+                    idx={idx} 
+                    onSelect={() => router.push(`/trip/${trip.id}`)} 
+                    onEdit={() => { setEditingTrip(trip); setActiveModal("editTrip"); }} 
+                    onDelete={() => handleDeleteTrip(trip.id)} 
+                  />
+                ))}
               </div>
             )}
           </div>
