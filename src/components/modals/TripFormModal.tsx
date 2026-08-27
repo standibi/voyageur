@@ -1,6 +1,6 @@
 import Modal from "@/components/modals/Modal";
-import { Trip } from "@/types";
-import { parseDateRange } from "@/utils/dateUtils";
+import { Trip, CreateTripInputSchema } from "@/types";
+import toast from "react-hot-toast";
 
 interface TripFormModalProps {
   isOpen: boolean;
@@ -11,7 +11,21 @@ interface TripFormModalProps {
 
 export default function TripFormModal({ isOpen, onClose, initialData, onSubmit }: TripFormModalProps) {
   const isEditing = !!initialData;
-  const parsedDates = initialData?.dates ? parseDateRange(initialData.dates) : { start: "", end: "" };
+  const parsedDates = initialData?.dateRange || { start: "", end: "" };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const data = Object.fromEntries(fd.entries());
+    const result = CreateTripInputSchema.safeParse(data);
+    
+    if (!result.success) {
+      toast.error(result.error.issues[0].message);
+      return;
+    }
+    
+    onSubmit(e);
+  };
 
   return (
     <Modal 
@@ -19,7 +33,7 @@ export default function TripFormModal({ isOpen, onClose, initialData, onSubmit }
       isOpen={isOpen} 
       onClose={onClose}
     >
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-1">Nom du voyage</label>
           <input 

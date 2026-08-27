@@ -48,9 +48,9 @@ export default function TripCard({ trip, idx, onSelect, onEdit, onDelete }: Trip
         
         <h3 className="text-2xl font-bold text-slate-800 group-hover:text-indigo-700 transition-colors mb-3 line-clamp-2">{trip.name}</h3>
         
-        {trip.dates ? (
+        {trip.dateRange ? (
           <div className="inline-flex items-center gap-2 bg-slate-100/80 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-semibold w-fit">
-            <i className="fa-regular fa-calendar text-indigo-500"></i> {formatDateRangeDisplay(trip.dates)}
+            <i className="fa-regular fa-calendar text-indigo-500"></i> {formatDateRangeDisplay(trip.dateRange)}
           </div>
         ) : (
           <div className="inline-flex items-center gap-2 bg-slate-50 text-slate-400 px-3 py-1.5 rounded-lg text-sm font-medium w-fit border border-slate-100">

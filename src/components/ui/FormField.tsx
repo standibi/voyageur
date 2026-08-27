@@ -3,6 +3,7 @@ import React from "react";
 interface FormFieldProps extends React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> {
   label: string;
   as?: "input" | "select" | "textarea";
+  rows?: number;
   children?: React.ReactNode;
 }
 

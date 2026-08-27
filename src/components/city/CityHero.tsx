@@ -33,7 +33,7 @@ export default function CityHero({ city, onBack, onEditCity }: CityHeroProps) {
         <div>
           <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-1 md:mb-2 tracking-tight drop-shadow-md">{city.name}</h2>
           <p className="text-indigo-200 font-medium text-sm md:text-lg drop-shadow-md">
-            <i className="fa-regular fa-calendar mr-2"></i> {city.dates} • {city.nights} Nights
+            <i className="fa-regular fa-calendar mr-2"></i> {`${city.dateRange.start} - ${city.dateRange.end}`} • {city.nights} Nights
           </p>
         </div>
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 md:p-5 border border-white/20 text-white flex gap-4 md:gap-8 shadow-2xl self-stretch md:self-auto justify-between md:justify-start">
