@@ -53,7 +53,7 @@ export default function Sidebar({ tripData, currentCityId, setCurrentCityId, onB
                 >
                   <div>
                     <h3 className={`text-lg mb-1 ${isActive ? "font-bold text-indigo-900" : "font-bold text-slate-800 group-hover:text-indigo-600"}`}>{c.name}</h3>
-                    <p className="text-xs font-medium text-slate-500"><i className="fa-regular fa-calendar mr-1 opacity-70"></i> {formatDateRangeDisplay(c.dates)}</p>
+                    <p className="text-xs font-medium text-slate-500"><i className="fa-regular fa-calendar mr-1 opacity-70"></i> {formatDateRangeDisplay(c.dateRange)}</p>
                   </div>
                   <div className="text-right">
                     <span className={`font-extrabold ${isActive ? "text-indigo-600" : "text-slate-600"}`}>€{c.totalBudget}</span>

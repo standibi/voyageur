@@ -1,3 +1,5 @@
+import { DateRange } from "@/types";
+
 export function formatFriendlyDate(dateStr: string): string {
   // expects YYYY-MM-DD
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -15,23 +17,10 @@ export function formatFriendlyDate(dateStr: string): string {
   return formatted;
 }
 
-export function formatDateRangeDisplay(datesStr?: string | null): string {
-  if (!datesStr) return '';
-  
-  // if it's stored as "start au end"
-  if (datesStr.includes(' au ')) {
-    const [start, end] = datesStr.split(' au ');
-    return `${formatFriendlyDate(start.trim())} - ${formatFriendlyDate(end.trim())}`;
-  }
-  
-  // if it's stored as "start - end"
-  if (datesStr.includes(' - ')) {
-    const [start, end] = datesStr.split(' - ');
-    return `${formatFriendlyDate(start.trim())} - ${formatFriendlyDate(end.trim())}`;
-  }
-
-  // single date
-  return formatFriendlyDate(datesStr.trim());
+export function formatDateRangeDisplay(dateRange?: DateRange | null): string {
+  if (!dateRange || (!dateRange.start && !dateRange.end)) return '';
+  if (!dateRange.end) return formatFriendlyDate(dateRange.start);
+  return `${formatFriendlyDate(dateRange.start)} - ${formatFriendlyDate(dateRange.end)}`;
 }
 
 export function formatDateTime(dateTimeStr: string): string {
@@ -44,20 +33,4 @@ export function formatDateTime(dateTimeStr: string): string {
   const datePart = formatFriendlyDate(dateTimeStr.split('T')[0]);
   const timePart = dateTimeStr.split('T')[1];
   return `${datePart}, ${timePart}`;
-}
-
-export function parseDateRange(datesStr?: string | null) {
-  if (!datesStr) return { start: '', end: '' };
-  
-  if (datesStr.includes(' au ')) {
-    const [start, end] = datesStr.split(' au ');
-    return { start: start.trim(), end: end.trim() };
-  }
-  
-  if (datesStr.includes(' - ')) {
-    const [start, end] = datesStr.split(' - ');
-    return { start: start.trim(), end: end.trim() };
-  }
-
-  return { start: datesStr.trim(), end: '' };
 }

@@ -22,7 +22,7 @@ export default function ActivityCard({ activity, onEditActivity }: ActivityCardP
           <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg text-sm">€{activity.price}</span>
         </div>
         <p className="text-sm font-medium text-slate-500 mb-2"><i className="fa-regular fa-clock mr-1 opacity-70"></i> {activity.time}</p>
-        <p className="text-sm text-slate-600 leading-relaxed">{activity.desc}</p>
+        <p className="text-sm text-slate-600 leading-relaxed">{activity.description}</p>
       </div>
     </div>
   );

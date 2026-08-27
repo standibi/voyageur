@@ -1,4 +1,4 @@
-import { CityData, Hotel, Activity, TimelineDay, ExpenseBreakdown } from "@/types";
+import { CityData, Hotel, Activity, TimelineDay, ExpenseBreakdown, ActivityIcon, ActivityColor, Expense } from "@/types";
 
 export function transformTripData(
   cities: any[],
@@ -15,27 +15,39 @@ export function transformTripData(
     const cityActivities = activities?.filter(a => a.city_id === city.id) || [];
     const cityExpenses = expenses?.filter(e => e.city_id === city.id) || [];
 
-    const timelineMap = new Map();
+    const timelineMap = new Map<string, TimelineDay>();
     cityActivities.forEach(act => {
       const key = `${act.date}|${act.day_title}`;
       if (!timelineMap.has(key)) timelineMap.set(key, { dayTitle: act.day_title, date: act.date, activities: [] });
-      timelineMap.get(key).activities.push({ ...act, icon: act.icon_name, color: act.color_class, bg: act.bg_class, desc: act.description });
+      timelineMap.get(key)!.activities.push({ 
+        ...act, 
+        icon: (act.icon_name || "star").replace('fa-', '') as ActivityIcon, 
+        color: (act.color_class ? act.color_class.split('-')[1] : "indigo") as ActivityColor, 
+        bg: act.bg_class || "bg-indigo-50",
+      });
     });
 
     const timeline = Array.from(timelineMap.values());
-    const breakdown = { stay: 0, act: 0, food: 0, transport: 0, misc: 0, activity: 0 };
+    const breakdown: ExpenseBreakdown = { stay: 0, activities: 0, food: 0, transport: 0, misc: 0 };
     
     cityExpenses.forEach(exp => {
-      if (breakdown[exp.category as keyof typeof breakdown] !== undefined) {
-        breakdown[exp.category as keyof typeof breakdown] += Number(exp.amount);
+      let cat = exp.category;
+      if (cat === 'act' || cat === 'activity') cat = 'activities';
+      
+      if (breakdown[cat as keyof ExpenseBreakdown] !== undefined) {
+        breakdown[cat as keyof ExpenseBreakdown] += Number(exp.amount);
       }
     });
+
+    // Parse dates to dateRange if needed
+    const datesSplit = (city.dates || "").split(" - ");
+    const dateRange = { start: datesSplit[0] || "", end: datesSplit[1] || "" };
 
     formattedData[city.id] = {
       id: city.id,
       trip_id: city.trip_id,
       name: city.name,
-      dates: city.dates,
+      dateRange,
       nights: city.nights,
       totalBudget: Number(city.allocated_budget),
       img: city.img_url || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2000&q=80',

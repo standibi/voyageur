@@ -1,11 +1,11 @@
 import React from "react";
 import Modal from "./Modal";
-import { City } from "@/types";
+import { CityData } from "@/types";
 
 interface LedgerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  city: City;
+  city: CityData;
 }
 
 export default function LedgerModal({ isOpen, onClose, city }: LedgerModalProps) {
@@ -29,7 +29,7 @@ export default function LedgerModal({ isOpen, onClose, city }: LedgerModalProps)
               <td className="py-3 text-right font-bold">€{city.breakdown.stay}</td>
             </tr>
             {city.rawActivities.map((act) => {
-              const isFood = act.icon_name === "fa-utensils";
+              const isFood = act.icon === "utensils";
               const catClass = isFood ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600";
               const catName = isFood ? "Nourriture" : "Activité";
               return (

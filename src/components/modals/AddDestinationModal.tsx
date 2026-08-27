@@ -2,6 +2,8 @@ import React from "react";
 import Modal from "./Modal";
 import FormField from "../ui/FormField";
 import DateRangePicker from "../ui/DateRangePicker";
+import { CreateCityInputSchema } from "@/types";
+import toast from "react-hot-toast";
 
 interface AddDestinationModalProps {
   isOpen: boolean;
@@ -10,9 +12,23 @@ interface AddDestinationModalProps {
 }
 
 export default function AddDestinationModal({ isOpen, onClose, onSubmit }: AddDestinationModalProps) {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const data = Object.fromEntries(fd.entries());
+    const result = CreateCityInputSchema.safeParse(data);
+    
+    if (!result.success) {
+      toast.error(result.error.issues[0].message);
+      return;
+    }
+    
+    onSubmit(e);
+  };
+
   return (
     <Modal title="Ajouter une nouvelle destination" isOpen={isOpen} onClose={onClose}>
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <FormField label="Nom de la ville" name="name" required type="text" />
         <DateRangePicker />
         <FormField label="Nuits" name="nights" required type="number" />
