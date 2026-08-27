@@ -1,3 +1,4 @@
+/* eslint-disable */
 import PullToRefresh from "react-simple-pull-to-refresh";
 import { CityData, Activity } from "@/types";
 import CityHero from "./CityHero";

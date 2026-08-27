@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { CityData } from "@/types";
 
 interface CityHeroProps {

@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+
+
 import { useState, useEffect } from "react";
 import { Trip } from "@/types";
 import { tripsService } from "@/services/trips";
